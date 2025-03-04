@@ -270,6 +270,7 @@ export function rootReducer(state = initialState, action) {
     }
 
     case ActionTypes.CLICK_BACKGROUND: {
+      console.log(state.get('showingHelp'),"state.get('showingHelp')");
       if (state.get('showingHelp')) {
         state = state.set('showingHelp', false);
       }
@@ -298,7 +299,10 @@ export function rootReducer(state = initialState, action) {
 
       // click on sibling closes all
       state = closeAllNodeDetails(state);
-
+      if (action.isDeselecting) {
+        // 回到总览视图的逻辑
+        return state;
+      }
       // select new node if it's not the same (in that case just delesect)
       if (prevDetailsStackSize > 1 || prevSelectedNodeId !== action.nodeId) {
         // dont set origin if a node was already selected, suppresses animation
@@ -594,12 +598,33 @@ export function rootReducer(state = initialState, action) {
       // Turn on the table view if the graph is too complex, but skip
       // this block if the user has already loaded topologies once.
       //最初节点加载
+      const nodeDetails = state.get('nodeDetails');
       if (!state.get('initialNodesLoaded') && !state.get('nodesLoaded')) {
         if (state.get('topologyViewMode') === GRAPH_VIEW_MODE) {
           state = graphExceedsComplexityThreshSelector(state)
             ? state.set('topologyViewMode', TABLE_VIEW_MODE) : state;
         }
         state = state.set('initialNodesLoaded', true);
+        
+        // 在初次加载时设置默认选中的节点
+        const nodes = state.get('nodes');              
+        if (nodes && nodes.size > 0) {
+          const firstNodeId = nodes.first().get('id');
+          nodes.map(node => {
+            console.log(node.get('service_alias'),"node.get('service_alias')");
+          })
+          // 'gr6a6e5d'
+          const serviceAlias = nodes.filter(node => node.get('service_alias') === 'gr6a6e5d');
+          const firstNodeIds = serviceAlias.first().get('id');
+          const label = serviceAlias.first().get('label');
+          
+          state = state.set('selectedNodeId', firstNodeIds);
+          state = state.setIn(['nodeDetails', firstNodeIds], {
+            id: firstNodeId,
+            label: label,
+            topologyId: state.get('currentTopologyId')
+          });
+        }
       }
       return state.set('nodesLoaded', true);
     }
